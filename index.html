@@ -205,6 +205,8 @@
   .comp-date input:focus{outline:2px solid var(--amber); outline-offset:1px; border-color:transparent}
   .comp-thumb{width:42px; height:42px; object-fit:cover; border-radius:9px; border:1px solid var(--line); cursor:pointer; background:var(--cream)}
   .comp-attach{font-size:.82rem; font-weight:600; color:var(--pine-2); background:none; border:1.5px dashed var(--pine-2); border-radius:9px; padding:7px 12px; cursor:pointer}
+  .comp-pdf{display:flex; align-items:center; gap:6px; background:var(--cream); border:1px solid var(--line); border-radius:9px; padding:8px 11px; font:inherit; font-size:.8rem; font-weight:700; color:var(--clay); cursor:pointer}
+  .comp-pdf svg{flex:none}
   .comp-del{font-size:.76rem; color:var(--clay); background:none; border:0; cursor:pointer; font-weight:600}
   .comp-pending{font-size:.8rem; color:var(--ink-faint)}
   #compList{max-height:52vh; overflow:auto; margin:2px -4px 0; padding:0 4px}
@@ -345,7 +347,7 @@
 </div>
 
 <!-- COMPROVANTES MODAL -->
-<input type="file" id="fileInput" accept="image/*" style="display:none">
+<input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
 <div class="overlay" id="compOverlay">
   <div class="modal">
     <h3>Comprovantes</h3>
@@ -568,7 +570,7 @@ $("compList").addEventListener("click", async e=>{
   if(t.dataset.toggle!=null){ await togglePagamento(compAlvoPessoa, t.dataset.toggle); renderCompList(); return; }
   if(t.dataset.attach!=null){ anexoAlvo={id:compAlvoPessoa, mes:t.dataset.attach}; $("fileInput").click(); return; }
   if(t.dataset.del!=null){ if(confirm("Remover este comprovante?")){ await removerComprovante(compAlvoPessoa, t.dataset.del); delete compCache[t.dataset.del]; renderCompList(); render(); toast("Comprovante removido."); } return; }
-  if(t.dataset.view!=null){ $("imgBig").src = compCache[t.dataset.view]; $("imgOverlay").classList.add("show"); return; }
+  if(t.dataset.view!=null){ const c=compCache[t.dataset.view]; if(!c) return; if(c.tipo==="pdf"){ abrirPdf(c.dataUrl); } else { $("imgBig").src=c.dataUrl; $("imgOverlay").classList.add("show"); } return; }
 });
 
 $("compList").addEventListener("change", async e=>{
@@ -579,15 +581,14 @@ $("compList").addEventListener("change", async e=>{
 $("fileInput").addEventListener("change", async e=>{
   const file = e.target.files[0]; e.target.value="";
   if(!file || !anexoAlvo) return;
-  toast("Processando imagem...");
+  toast("Processando comprovante...");
   try{
-    const dataUrl = await comprimirImagem(file);
-    if(dataUrl.length*0.75 > 950000){ toast("Imagem muito grande. Tente outra foto."); anexoAlvo=null; return; }
-    await salvarComprovante(anexoAlvo.id, anexoAlvo.mes, dataUrl);
-    compCache[anexoAlvo.mes] = dataUrl;
+    const { dataUrl, tipo } = await arquivoParaComprovante(file);
+    await salvarComprovante(anexoAlvo.id, anexoAlvo.mes, dataUrl, tipo);
+    compCache[anexoAlvo.mes] = { dataUrl, tipo };
     renderCompList(); render();
     toast("Comprovante anexado.");
-  }catch(err){ toast("Não consegui ler essa imagem."); }
+  }catch(err){ toast(err && err.message==="grande" ? "Arquivo muito grande. Tente um print." : "Não consegui ler esse arquivo."); }
   anexoAlvo = null;
 });
 
@@ -747,25 +748,72 @@ function comprimirImagem(file, maxLado=1200, quality=0.62){
   });
 }
 
+function lerDataURL(file){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(new Error("leitura")); r.readAsDataURL(file); });
+}
+
+async function pdfPrimeiraPaginaJPEG(file){
+  const pdfjs = await import("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.min.mjs");
+  pdfjs.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.2.67/pdf.worker.min.mjs";
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjs.getDocument({ data:buf }).promise;
+  const page = await pdf.getPage(1);
+  const base = page.getViewport({ scale:1 });
+  const scale = Math.min(2, 1200/base.width);
+  const vp = page.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
+  await page.render({ canvasContext:canvas.getContext("2d"), viewport:vp }).promise;
+  return canvas.toDataURL("image/jpeg", 0.7);
+}
+
+async function arquivoParaComprovante(file){
+  const ehPdf = file.type==="application/pdf" || /\.pdf$/i.test(file.name);
+  if(ehPdf){
+    try{
+      const jpeg = await pdfPrimeiraPaginaJPEG(file);
+      if(jpeg.length*0.75 <= 950000) return { dataUrl:jpeg, tipo:"img" };
+    }catch(e){ /* sem conversão: guarda o PDF original abaixo */ }
+    const pdfData = await lerDataURL(file);
+    if(pdfData.length*0.75 > 950000) throw new Error("grande");
+    return { dataUrl:pdfData, tipo:"pdf" };
+  }
+  const jpeg = await comprimirImagem(file);
+  if(jpeg.length*0.75 > 950000) throw new Error("grande");
+  return { dataUrl:jpeg, tipo:"img" };
+}
+
+function abrirPdf(dataUrl){
+  try{
+    const b64 = dataUrl.split(",")[1];
+    const bin = atob(b64); const arr = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([arr], { type:"application/pdf" }));
+    window.open(url, "_blank");
+    setTimeout(()=> URL.revokeObjectURL(url), 60000);
+  }catch(e){ toast("Não consegui abrir o PDF."); }
+}
+
 async function comprovantesDe(id){
   if(CONFIGURADO){
     const q = fb.query(fb.collection(db,"comprovantes"), fb.where("pessoaId","==",id));
     const snap = await fb.getDocs(q);
-    const map={}; snap.forEach(d=>{ const x=d.data(); map[x.mes]=x.dataUrl; }); return map;
+    const map={}; snap.forEach(d=>{ const x=d.data(); map[x.mes]={ dataUrl:x.dataUrl, tipo:x.tipo||"img" }; }); return map;
   }
   const map={}; const pref=id+"_";
-  Object.keys(demoComp).forEach(k=>{ if(k.startsWith(pref)) map[k.slice(pref.length)]=demoComp[k]; });
+  Object.keys(demoComp).forEach(k=>{ if(k.startsWith(pref)){ const v=demoComp[k]; map[k.slice(pref.length)] = (typeof v==="string")?{dataUrl:v,tipo:"img"}:v; } });
   return map;
 }
 
-async function salvarComprovante(id, mes, dataUrl){
+async function salvarComprovante(id, mes, dataUrl, tipo){
+  tipo = tipo || "img";
   const p = contribuintes.find(x=>x.id===id);
   const pagVal = (p && p.pagamentos && p.pagamentos[mes]) ? p.pagamentos[mes] : hojeISO();
   if(p){ p.comprovantes=p.comprovantes||{}; p.comprovantes[mes]=true; p.pagamentos=p.pagamentos||{}; p.pagamentos[mes]=pagVal; }
   if(CONFIGURADO){
-    await fb.setDoc(fb.doc(db,"comprovantes", id+"_"+mes), { pessoaId:id, mes, dataUrl, criadoEm:Date.now() });
+    await fb.setDoc(fb.doc(db,"comprovantes", id+"_"+mes), { pessoaId:id, mes, dataUrl, tipo, criadoEm:Date.now() });
     await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["comprovantes."+mes]:true, ["pagamentos."+mes]:pagVal });
-  } else { demoComp[id+"_"+mes]=dataUrl; }
+  } else { demoComp[id+"_"+mes]={ dataUrl, tipo }; }
 }
 
 async function removerComprovante(id, mes){
@@ -791,9 +839,11 @@ function renderCompList(){
   $("compList").innerHTML = config.meses.map(mk=>{
     const v = p.pagamentos && p.pagamentos[mk];
     const pago = !!v;
-    const img = compCache[mk];
-    const slot = img
-      ? `<img src="${img}" class="comp-thumb" data-view="${mk}" alt="Comprovante de ${rotuloMes(mk)}"><button class="comp-del" data-del="${mk}">remover</button>`
+    const c = compCache[mk];
+    const slot = c
+      ? (c.tipo==="pdf"
+          ? `<button class="comp-pdf" data-view="${mk}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>PDF</button><button class="comp-del" data-del="${mk}">remover</button>`
+          : `<img src="${c.dataUrl}" class="comp-thumb" data-view="${mk}" alt="Comprovante de ${rotuloMes(mk)}"><button class="comp-del" data-del="${mk}">remover</button>`)
       : `<button class="comp-attach" data-attach="${mk}">Anexar</button>`;
     const dateRow = pago
       ? `<div class="comp-date"><label for="dt-${mk}">Pago em</label><input id="dt-${mk}" type="date" data-date="${mk}" value="${dataPag(v)}"></div>`
@@ -877,7 +927,7 @@ function carregarDemo(){
     "<text x='160' y='260' font-family='sans-serif' font-size='13' fill='#8A9489' text-anchor='middle'>exemplo de demonstração</text></svg>");
   const p0 = contribuintes[0];
   const primeiro = config.meses.find(mk=> p0.pagamentos[mk]);
-  if(primeiro){ demoComp[p0.id+"_"+primeiro]=amostra; p0.comprovantes[primeiro]=true; }
+  if(primeiro){ demoComp[p0.id+"_"+primeiro]={ dataUrl:amostra, tipo:"img" }; p0.comprovantes[primeiro]=true; }
 }
 
 iniciar();
