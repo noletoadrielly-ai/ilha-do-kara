@@ -180,12 +180,29 @@
   .p-comp svg{opacity:.85}
   .p-remove{border:0; background:transparent; color:var(--clay); font-size:.8rem; font-weight:600; cursor:pointer; padding:4px 0}
   .editing .p-remove{display:inline-block}
-  .comp-row{display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line-soft)}
+  .chev{color:var(--ink-faint); flex:none; transition:transform .2s}
+  .editing .chev{display:none}
+  body:not(.editing) .person{cursor:pointer}
+  .person.open .chev{transform:rotate(180deg)}
+  .person-detail{display:none; margin-top:12px; padding-top:10px; border-top:1px solid var(--line-soft)}
+  .person.open .person-detail{display:block}
+  .pd-row{display:flex; justify-content:space-between; align-items:center; font-size:.83rem; padding:5px 2px; border-bottom:1px solid var(--line-soft)}
+  .pd-row:last-child{border-bottom:0}
+  .pd-row span:first-child{font-weight:600; color:var(--ink)}
+  .pd-paid span:last-child{color:var(--pine-2); font-weight:600}
+  .pd-due span:last-child{color:var(--clay); font-weight:600}
+  .pd-future span:last-child{color:var(--ink-faint)}
+  .comp-row{padding:11px 0; border-bottom:1px solid var(--line-soft)}
   .comp-row:last-child{border-bottom:0}
-  .comp-month{font-weight:600; font-size:.9rem; width:56px; flex:none}
+  .comp-head{display:flex; align-items:center; gap:10px}
+  .comp-month{font-weight:600; font-size:.9rem; flex:1}
   .comp-chk{width:26px; height:26px; border-radius:8px; border:1.5px solid var(--line); background:var(--cream); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:.75rem; font-weight:700; color:#fff; flex:none}
   .comp-chk.paid{background:var(--pine-2); border-color:var(--pine-2)}
-  .comp-slot{margin-left:auto; display:flex; align-items:center; gap:9px}
+  .comp-slot{margin-left:auto; display:flex; align-items:center; gap:9px; flex:none}
+  .comp-date{display:flex; align-items:center; gap:8px; margin:9px 0 2px 36px}
+  .comp-date label{font-size:.8rem; color:var(--ink-soft); font-weight:600}
+  .comp-date input{border:1px solid var(--line); border-radius:8px; padding:6px 10px; font:inherit; font-size:.85rem; background:var(--cream); color:var(--ink)}
+  .comp-date input:focus{outline:2px solid var(--amber); outline-offset:1px; border-color:transparent}
   .comp-thumb{width:42px; height:42px; object-fit:cover; border-radius:9px; border:1px solid var(--line); cursor:pointer; background:var(--cream)}
   .comp-attach{font-size:.82rem; font-weight:600; color:var(--pine-2); background:none; border:1.5px dashed var(--pine-2); border-radius:9px; padding:7px 12px; cursor:pointer}
   .comp-del{font-size:.76rem; color:var(--clay); background:none; border:0; cursor:pointer; font-weight:600}
@@ -388,6 +405,9 @@ const $ = id => document.getElementById(id);
 const money = n => "R$ " + Math.round(n).toLocaleString("pt-BR");
 const MESES_PT = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 function rotuloMes(key){ const [a,m]=key.split("-"); return MESES_PT[(+m)-1] + "/" + a.slice(2); }
+function hojeISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dataPag(v){ return (typeof v==="string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v : ""; }
+function dataBR(iso){ if(!iso) return ""; const [a,m,d]=iso.split("-"); return d+"/"+m+"/"+a.slice(2); }
 function mesAtualKey(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
 function mesesDevidos(){ const atual = mesAtualKey(); return config.meses.filter(m => m <= atual); }
 function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
@@ -484,17 +504,32 @@ function renderPeople(m){
       ? `<span class="badge ok">em dia</span>`
       : (falta>0 ? `<span class="badge late">falta ${falta}</span>` : `<span class="badge ok">—</span>`);
     const dots = config.meses.map(mk=>{
-      const paid = p.pagamentos && p.pagamentos[mk];
+      const v = p.pagamentos && p.pagamentos[mk];
+      const paid = !!v;
       const due = devidos.has(mk);
       const hasc = p.comprovantes && p.comprovantes[mk];
-      return `<div class="dot ${paid?'paid':''} ${due?'due':''} ${hasc?'hascomp':''}" data-id="${p.id}" data-month="${mk}" role="button" aria-label="${rotuloMes(mk)}: ${paid?'pago':'não pago'}${hasc?', com comprovante':''}" title="${rotuloMes(mk)}: ${paid?'pago':'não pago'}">${MESES_PT[(+mk.split("-")[1])-1]}</div>`;
+      const dt = dataPag(v);
+      const est = paid ? ('pago'+(dt?' em '+dataBR(dt):'')) : 'não pago';
+      return `<div class="dot ${paid?'paid':''} ${due?'due':''} ${hasc?'hascomp':''}" data-id="${p.id}" data-month="${mk}" role="button" aria-label="${rotuloMes(mk)}: ${est}${hasc?', com comprovante':''}" title="${rotuloMes(mk)}: ${est}">${MESES_PT[(+mk.split("-")[1])-1]}</div>`;
+    }).join("");
+    const detalhe = config.meses.map(mk=>{
+      const v = p.pagamentos && p.pagamentos[mk];
+      const paid = !!v;
+      const due = devidos.has(mk);
+      const dt = dataPag(v);
+      let status, cls;
+      if(paid){ status = dt ? "pago em " + dataBR(dt) : "pago"; cls="pd-paid"; }
+      else if(due){ status = "em aberto"; cls="pd-due"; }
+      else { status = "a vencer"; cls="pd-future"; }
+      return `<div class="pd-row ${cls}"><span>${rotuloMes(mk)}</span><span>${status}</span></div>`;
     }).join("");
     return `<div class="person">
       <div class="person-top">
         <span class="p-name">${escapeHtml(p.nome)}</span>
-        <span class="p-right"><span class="p-total num">${money(total)}</span>${badge}</span>
+        <span class="p-right"><span class="p-total num">${money(total)}</span>${badge}<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m6 9 6 6 6-6"/></svg></span>
       </div>
       <div class="dots">${dots}</div>
+      <div class="person-detail">${detalhe}</div>
       <div class="p-actions">
         <button class="p-comp" data-comp="${p.id}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>Comprovantes</button>
         <button class="p-remove" data-remove="${p.id}">remover</button>
@@ -509,7 +544,11 @@ $("searchInput").addEventListener("input", e=>{ busca=e.target.value; render(); 
 $("toggleLate").addEventListener("click", e=>{ filtroLate=!filtroLate; e.target.classList.toggle("on",filtroLate); render(); });
 
 $("people").addEventListener("click", async e=>{
-  if(!editando) return;
+  if(!editando){
+    const card = e.target.closest(".person");
+    if(card) card.classList.toggle("open");
+    return;
+  }
   const comp = e.target.closest("[data-comp]");
   if(comp){ abrirComprovantes(comp.dataset.comp); return; }
   const dot = e.target.closest(".dot");
@@ -530,6 +569,11 @@ $("compList").addEventListener("click", async e=>{
   if(t.dataset.attach!=null){ anexoAlvo={id:compAlvoPessoa, mes:t.dataset.attach}; $("fileInput").click(); return; }
   if(t.dataset.del!=null){ if(confirm("Remover este comprovante?")){ await removerComprovante(compAlvoPessoa, t.dataset.del); delete compCache[t.dataset.del]; renderCompList(); render(); toast("Comprovante removido."); } return; }
   if(t.dataset.view!=null){ $("imgBig").src = compCache[t.dataset.view]; $("imgOverlay").classList.add("show"); return; }
+});
+
+$("compList").addEventListener("change", async e=>{
+  const d = e.target.closest("[data-date]");
+  if(d) await setDataPagamento(compAlvoPessoa, d.dataset.date, d.value);
 });
 
 $("fileInput").addEventListener("change", async e=>{
@@ -669,9 +713,18 @@ async function removerPessoa(id){
 }
 async function togglePagamento(id, mes){
   const p = contribuintes.find(x=>x.id===id); if(!p) return;
-  const novo = !(p.pagamentos && p.pagamentos[mes]);
+  const jaPago = !!(p.pagamentos && p.pagamentos[mes]);
+  const novo = jaPago ? false : hojeISO();   // marca já com a data de hoje
   p.pagamentos = p.pagamentos||{}; p.pagamentos[mes]=novo; // otimista
   if(CONFIGURADO) await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["pagamentos."+mes]: novo });
+  render();
+}
+
+async function setDataPagamento(id, mes, data){
+  const p = contribuintes.find(x=>x.id===id); if(!p) return;
+  const val = data || true;
+  p.pagamentos = p.pagamentos||{}; p.pagamentos[mes]=val;
+  if(CONFIGURADO) await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["pagamentos."+mes]: val });
   render();
 }
 
@@ -707,10 +760,11 @@ async function comprovantesDe(id){
 
 async function salvarComprovante(id, mes, dataUrl){
   const p = contribuintes.find(x=>x.id===id);
-  if(p){ p.comprovantes=p.comprovantes||{}; p.comprovantes[mes]=true; p.pagamentos=p.pagamentos||{}; p.pagamentos[mes]=true; }
+  const pagVal = (p && p.pagamentos && p.pagamentos[mes]) ? p.pagamentos[mes] : hojeISO();
+  if(p){ p.comprovantes=p.comprovantes||{}; p.comprovantes[mes]=true; p.pagamentos=p.pagamentos||{}; p.pagamentos[mes]=pagVal; }
   if(CONFIGURADO){
     await fb.setDoc(fb.doc(db,"comprovantes", id+"_"+mes), { pessoaId:id, mes, dataUrl, criadoEm:Date.now() });
-    await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["comprovantes."+mes]:true, ["pagamentos."+mes]:true });
+    await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["comprovantes."+mes]:true, ["pagamentos."+mes]:pagVal });
   } else { demoComp[id+"_"+mes]=dataUrl; }
 }
 
@@ -735,16 +789,22 @@ async function abrirComprovantes(id){
 function renderCompList(){
   const p = contribuintes.find(x=>x.id===compAlvoPessoa); if(!p) return;
   $("compList").innerHTML = config.meses.map(mk=>{
-    const pago = p.pagamentos && p.pagamentos[mk];
+    const v = p.pagamentos && p.pagamentos[mk];
+    const pago = !!v;
     const img = compCache[mk];
     const slot = img
       ? `<img src="${img}" class="comp-thumb" data-view="${mk}" alt="Comprovante de ${rotuloMes(mk)}"><button class="comp-del" data-del="${mk}">remover</button>`
-      : (pago ? `<button class="comp-attach" data-attach="${mk}">Anexar</button>`
-              : `<button class="comp-attach" data-attach="${mk}">Anexar</button>`);
+      : `<button class="comp-attach" data-attach="${mk}">Anexar</button>`;
+    const dateRow = pago
+      ? `<div class="comp-date"><label for="dt-${mk}">Pago em</label><input id="dt-${mk}" type="date" data-date="${mk}" value="${dataPag(v)}"></div>`
+      : ``;
     return `<div class="comp-row">
-      <span class="comp-month">${rotuloMes(mk)}</span>
-      <button class="comp-chk ${pago?'paid':''}" data-toggle="${mk}" title="Marcar pago">${pago?'✓':''}</button>
-      <span class="comp-slot">${slot}</span>
+      <div class="comp-head">
+        <button class="comp-chk ${pago?'paid':''}" data-toggle="${mk}" title="Marcar pago">${pago?'✓':''}</button>
+        <span class="comp-month">${rotuloMes(mk)}</span>
+        <span class="comp-slot">${slot}</span>
+      </div>
+      ${dateRow}
     </div>`;
   }).join("");
 }
@@ -803,7 +863,7 @@ function carregarDemo(){
   const atual = mesAtualKey();
   contribuintes = nomes.map((n,i)=>{
     const pag={};
-    config.meses.forEach(mk=>{ if(mk<=atual){ const paga = Math.random() > (i%4===0?0.55:0.18); if(paga) pag[mk]=true; } });
+    config.meses.forEach(mk=>{ if(mk<=atual){ const paga = Math.random() > (i%4===0?0.55:0.18); if(paga){ const dia=String(1+Math.floor(Math.random()*27)).padStart(2,"0"); pag[mk]=mk+"-"+dia; } } });
     return { id:"demo-"+i, nome:n, pagamentos:pag, comprovantes:{}, ordem:i };
   });
   // Comprovante de exemplo pra você ver o visual
