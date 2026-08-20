@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caixa do Encontro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --cream:#FAF4EA; --cream-2:#F2E8D6; --surface:#FFFDF8;
+    --ink:#23332B; --ink-soft:#5C6B61; --ink-faint:#8A9489;
+    --pine:#1E4739; --pine-2:#2E6B52; --pine-line:#2b5a48;
+    --amber:#E4A11B; --amber-deep:#C0821A; --amber-soft:#F7E4B8;
+    --clay:#B15E3E; --clay-soft:#F0DAcf;
+    --line:#E7DAC4; --line-soft:#EFE6D5;
+    --ok:#2E6B52; --pending:#C9BCA6;
+    --radius:16px; --radius-sm:11px;
+    --shadow:0 1px 2px rgba(40,30,10,.04), 0 8px 24px rgba(40,30,10,.06);
+    --shadow-lg:0 12px 40px rgba(20,50,35,.18);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Instrument Sans",system-ui,sans-serif;
+    background:var(--cream); color:var(--ink);
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:20px 16px 64px}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- Header ---------- */
+  .top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px}
+  .brand{display:flex; flex-direction:column}
+  .eyebrow{font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-faint); font-weight:600}
+  h1{font-family:"Fraunces",serif; font-weight:600; font-size:1.75rem; line-height:1.05; margin:.15em 0 0; letter-spacing:-.01em}
+  .subtitle{color:var(--ink-soft); font-size:.92rem; margin-top:2px}
+
+  /* ---------- Demo banner ---------- */
+  .demo-flag{
+    background:var(--amber-soft); color:#7a5a10; border:1px solid #ecd28f;
+    border-radius:var(--radius-sm); padding:9px 13px; font-size:.83rem; font-weight:500;
+    margin-bottom:16px; display:flex; gap:8px; align-items:center;
+  }
+  .demo-flag b{font-weight:700}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    background:var(--pine); color:#F4EFE2; border-radius:var(--radius);
+    padding:22px 20px 24px; box-shadow:var(--shadow-lg); position:relative; overflow:hidden;
+  }
+  .hero::after{content:""; position:absolute; right:-40px; top:-40px; width:180px; height:180px;
+    background:radial-gradient(circle, rgba(228,161,27,.16), transparent 70%); pointer-events:none}
+  .hero .eyebrow{color:#9db7a6}
+  .hero-amount{font-family:"Fraunces",serif; font-weight:600; font-size:2.9rem; line-height:1; margin:6px 0 2px; color:#fff; letter-spacing:-.02em}
+  .hero-amount .cents{font-size:1.4rem; color:#cfe0d3; font-weight:500}
+  .hero-goal{color:#bcd0c2; font-size:.95rem}
+  .hero-goal b{color:var(--amber); font-weight:700}
+  .track{margin-top:16px; height:16px; border-radius:99px; background:#163429; overflow:hidden; position:relative; box-shadow:inset 0 1px 2px rgba(0,0,0,.3)}
+  .fill{height:100%; width:0; border-radius:99px;
+    background:linear-gradient(90deg,#E4A11B,#F2C14E);
+    box-shadow:0 0 12px rgba(242,193,78,.45);
+    transition:width 1.1s cubic-bezier(.2,.7,.2,1)}
+  .hero-foot{display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; gap:10px}
+  .hero-foot .left{font-size:.9rem; color:#d8e6dc}
+  .hero-foot .pct{font-family:"Fraunces",serif; font-weight:600; font-size:1.15rem; color:var(--amber)}
+
+  /* ---------- Stat cards ---------- */
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px}
+  .stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px 12px; box-shadow:var(--shadow)}
+  .stat .k{font-size:1.5rem; font-family:"Fraunces",serif; font-weight:600; line-height:1}
+  .stat .l{font-size:.76rem; color:var(--ink-soft); margin-top:5px; font-weight:500; letter-spacing:.01em}
+  .stat.good .k{color:var(--pine-2)}
+  .stat.warn .k{color:var(--clay)}
+  .stat.month .k{color:var(--amber-deep)}
+
+  /* ---------- Section ---------- */
+  .section{margin-top:26px}
+  .section-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px}
+  .section-head h2{font-family:"Fraunces",serif; font-weight:600; font-size:1.15rem; margin:0}
+  .hint{font-size:.8rem; color:var(--ink-faint)}
+
+  /* ---------- Chart ---------- */
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 14px; box-shadow:var(--shadow)}
+  .chart-wrap{width:100%; overflow-x:auto}
+  svg.chart{display:block}
+  .bar{transition:height .6s ease, y .6s ease}
+  .chart-legend{display:flex; gap:16px; flex-wrap:wrap; margin-top:10px; font-size:.78rem; color:var(--ink-soft)}
+  .chart-legend span{display:inline-flex; align-items:center; gap:6px}
+  .swatch{width:11px; height:11px; border-radius:3px; display:inline-block}
+  .swatch.amber{background:var(--amber)}
+  .swatch.exp{background:transparent; border:1.5px dashed var(--ink-faint); border-radius:2px; height:0; width:14px}
+
+  /* ---------- Contributors ---------- */
+  .controls{display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap}
+  .search{flex:1; min-width:150px; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:99px; padding:8px 14px}
+  .search input{border:0; background:transparent; outline:0; width:100%; font:inherit; color:var(--ink)}
+  .search svg{flex:none; opacity:.5}
+  .toggle{border:1px solid var(--line); background:var(--surface); color:var(--ink-soft); border-radius:99px; padding:8px 14px; font:inherit; font-weight:600; font-size:.85rem; cursor:pointer; white-space:nowrap}
+  .toggle.on{background:var(--pine); color:#fff; border-color:var(--pine)}
+
+  .people{display:flex; flex-direction:column; gap:8px}
+  .person{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:12px 14px; box-shadow:var(--shadow)}
+  .person-top{display:flex; align-items:center; justify-content:space-between; gap:10px}
+  .p-name{font-weight:600; font-size:1rem}
+  .p-right{display:flex; align-items:center; gap:10px; flex:none}
+  .p-total{font-weight:700; font-size:.95rem}
+  .badge{font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:99px; white-space:nowrap}
+  .badge.ok{background:#E4F0E8; color:var(--pine-2)}
+  .badge.late{background:var(--clay-soft); color:var(--clay)}
+  .dots{display:flex; flex-wrap:wrap; gap:6px; margin-top:11px}
+  .dot{width:26px; height:26px; border-radius:8px; border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:.62rem; font-weight:700; color:var(--ink-faint); background:var(--cream); user-select:none}
+  .dot.paid{background:var(--pine-2); border-color:var(--pine-2); color:#fff}
+  .dot.due:not(.paid){border-color:var(--clay); color:var(--clay)}
+  .editing .dot{cursor:pointer; transition:transform .08s}
+  .editing .dot:active{transform:scale(.9)}
+  .p-remove{border:0; background:transparent; color:var(--clay); font-size:.8rem; font-weight:600; cursor:pointer; padding:4px 0; margin-top:6px; display:none}
+  .editing .p-remove{display:inline-block}
+
+  .empty{text-align:center; color:var(--ink-faint); padding:26px 10px; font-size:.92rem}
+
+  /* ---------- Buttons ---------- */
+  .btn{border:0; border-radius:11px; padding:11px 16px; font:inherit; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; justify-content:center}
+  .btn-primary{background:var(--pine); color:#fff}
+  .btn-primary:hover{background:#173a2e}
+  .btn-amber{background:var(--amber); color:#3a2c07}
+  .btn-amber:hover{background:var(--amber-deep)}
+  .btn-ghost{background:var(--surface); border:1px solid var(--line); color:var(--ink)}
+  .btn-block{width:100%}
+  .btn-sm{padding:8px 13px; font-size:.85rem; border-radius:9px}
+
+  .share{margin-top:14px}
+
+  /* ---------- Footer ---------- */
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--ink-faint); font-size:.82rem}
+  .link-btn{background:none; border:0; color:var(--ink-faint); font:inherit; cursor:pointer; text-decoration:underline; text-underline-offset:3px}
+
+  /* ---------- Admin bar ---------- */
+  .adminbar{position:sticky; top:0; z-index:20; background:var(--pine); color:#fff; border-radius:0 0 var(--radius) var(--radius); padding:10px 14px; display:none; align-items:center; justify-content:space-between; gap:10px; box-shadow:var(--shadow-lg); margin:-20px -16px 16px}
+  .adminbar.show{display:flex}
+  .adminbar .who{font-size:.85rem; display:flex; align-items:center; gap:8px}
+  .adminbar .who b{font-weight:700}
+  .adminbar .acts{display:flex; gap:8px}
+  .pulse{width:8px; height:8px; border-radius:99px; background:#7CE0A9; box-shadow:0 0 0 0 rgba(124,224,169,.7); animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(124,224,169,.6)}70%{box-shadow:0 0 0 7px rgba(124,224,169,0)}100%{box-shadow:0 0 0 0 rgba(124,224,169,0)}}
+
+  /* ---------- Modal ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(25,35,28,.55); backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center; padding:18px; z-index:50}
+  .overlay.show{display:flex}
+  .modal{background:var(--surface); border-radius:var(--radius); width:100%; max-width:420px; padding:22px; box-shadow:var(--shadow-lg); max-height:90vh; overflow:auto}
+  .modal h3{font-family:"Fraunces",serif; font-weight:600; font-size:1.3rem; margin:0 0 4px}
+  .modal p.sub{color:var(--ink-soft); font-size:.9rem; margin:0 0 18px}
+  .field{margin-bottom:14px}
+  .field label{display:block; font-size:.82rem; font-weight:600; color:var(--ink-soft); margin-bottom:6px}
+  .field input{width:100%; border:1px solid var(--line); border-radius:10px; padding:11px 13px; font:inherit; background:var(--cream); color:var(--ink)}
+  .field input:focus{outline:2px solid var(--amber); outline-offset:1px; border-color:transparent}
+  .modal-acts{display:flex; gap:10px; margin-top:20px}
+  .err{color:var(--clay); font-size:.85rem; font-weight:600; min-height:1.1em; margin-top:-4px}
+  .months-editor{display:flex; flex-wrap:wrap; gap:6px; margin-top:4px}
+  .month-chip{display:inline-flex; align-items:center; gap:5px; background:var(--cream); border:1px solid var(--line); border-radius:99px; padding:5px 6px 5px 11px; font-size:.8rem; font-weight:600}
+  .month-chip button{border:0; background:#e9ddc7; width:18px; height:18px; border-radius:99px; cursor:pointer; color:var(--ink-soft); font-weight:700; line-height:1}
+
+  /* ---------- Toast ---------- */
+  .toast{position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(20px); background:var(--ink); color:#fff; padding:12px 18px; border-radius:99px; font-size:.9rem; font-weight:600; opacity:0; pointer-events:none; transition:all .25s; z-index:60; box-shadow:var(--shadow-lg)}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:420px){
+    .hero-amount{font-size:2.4rem}
+    .stat .k{font-size:1.3rem}
+    h1{font-size:1.5rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .fill{transition:none} .bar{transition:none} .pulse{animation:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- Barra da tesoureira (só aparece logada) -->
+  <div class="adminbar" id="adminbar">
+    <span class="who"><span class="pulse"></span> Modo edição <b id="adminWho"></b></span>
+    <span class="acts">
+      <button class="btn btn-amber btn-sm" id="btnConfig">Ajustes</button>
+      <button class="btn btn-ghost btn-sm" id="btnLogout" style="background:rgba(255,255,255,.15);border-color:transparent;color:#fff">Sair</button>
+    </span>
+  </div>
+
+  <div class="top">
+    <div class="brand">
+      <span class="eyebrow" id="eyebrow">Caixa do encontro</span>
+      <h1 id="eventName">Encontro da Nossa Família</h1>
+      <span class="subtitle" id="eventSubtitle">Vaquinha mensal • meta do reencontro</span>
+    </div>
+  </div>
+
+  <div class="demo-flag" id="demoFlag" style="display:none">
+    <span><b>Modo demonstração.</b> Dados de exemplo, nada é salvo. Configure o Firebase pra usar de verdade.</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="eyebrow">Já juntamos</span>
+    <div class="hero-amount" id="heroAmount">R$ 0</div>
+    <div class="hero-goal">de <b id="heroGoal">R$ 0</b> que é a nossa meta</div>
+    <div class="track"><div class="fill" id="heroFill"></div></div>
+    <div class="hero-foot">
+      <span class="left" id="heroRemaining">Faltam R$ 0</span>
+      <span class="pct" id="heroPct">0%</span>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat good"><div class="k num" id="statOk">0</div><div class="l">Em dia</div></div>
+    <div class="stat warn"><div class="k num" id="statLate">0</div><div class="l">Faltando pagar</div></div>
+    <div class="stat month"><div class="k num" id="statMonth">R$ 0</div><div class="l" id="statMonthLabel">Entrou este mês</div></div>
+  </div>
+
+  <!-- CHART -->
+  <div class="section">
+    <div class="section-head">
+      <h2>Evolução mês a mês</h2>
+      <span class="hint">quanto entrou em cada mês</span>
+    </div>
+    <div class="card">
+      <div class="chart-wrap"><svg class="chart" id="chart" role="img" aria-label="Gráfico de arrecadação por mês"></svg></div>
+      <div class="chart-legend">
+        <span><span class="swatch amber"></span> Arrecadado no mês</span>
+        <span><span class="swatch exp"></span> Esperado (todos pagando)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTRIBUTORS -->
+  <div class="section">
+    <div class="section-head">
+      <h2>Quem já contribuiu</h2>
+      <span class="hint" id="peopleCount"></span>
+    </div>
+    <div class="controls">
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="searchInput" placeholder="Buscar pessoa..." aria-label="Buscar pessoa">
+      </div>
+      <button class="toggle" id="toggleLate">Só quem falta</button>
+      <button class="btn btn-amber btn-sm" id="btnAddPerson" style="display:none">+ Pessoa</button>
+    </div>
+    <div class="people" id="people"></div>
+  </div>
+
+  <!-- SHARE -->
+  <div class="share">
+    <button class="btn btn-primary btn-block" id="btnShare">Copiar resumo pro WhatsApp</button>
+  </div>
+
+  <footer>
+    <span id="updatedAt">Atualizado agora</span>
+    <button class="link-btn" id="btnTreasurer">Área da tesoureira</button>
+  </footer>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="overlay" id="loginOverlay">
+  <div class="modal">
+    <h3>Área da tesoureira</h3>
+    <p class="sub">Entre pra registrar os pagamentos. Só você tem acesso.</p>
+    <div class="field"><label for="loginEmail">E-mail</label><input id="loginEmail" type="email" autocomplete="username" placeholder="voce@email.com"></div>
+    <div class="field"><label for="loginPass">Senha</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+    <div class="err" id="loginErr"></div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" id="loginCancel" style="flex:1">Cancelar</button>
+      <button class="btn btn-primary" id="loginSubmit" style="flex:1">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIG MODAL -->
+<div class="overlay" id="configOverlay">
+  <div class="modal">
+    <h3>Ajustes do encontro</h3>
+    <p class="sub">Nome, valor mensal, meta e meses da vaquinha.</p>
+    <div class="field"><label for="cfgName">Nome do evento</label><input id="cfgName" placeholder="Encontro da Família..."></div>
+    <div class="field"><label for="cfgSubtitle">Subtítulo</label><input id="cfgSubtitle" placeholder="Vaquinha mensal..."></div>
+    <div class="field"><label for="cfgValue">Valor por pessoa/mês (R$)</label><input id="cfgValue" type="number" min="0" step="1" inputmode="numeric"></div>
+    <div class="field"><label for="cfgGoal">Meta total (R$)</label><input id="cfgGoal" type="number" min="0" step="1" inputmode="numeric"></div>
+    <div class="field">
+      <label>Meses da vaquinha</label>
+      <div class="months-editor" id="monthsEditor"></div>
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <input id="cfgNewMonth" type="month" style="flex:1; border:1px solid var(--line); border-radius:10px; padding:9px 12px; font:inherit; background:var(--cream)">
+        <button class="btn btn-ghost btn-sm" id="cfgAddMonth">Adicionar</button>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" id="cfgCancel" style="flex:1">Fechar</button>
+      <button class="btn btn-primary" id="cfgSave" style="flex:1">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* ============================================================
+   1) CONFIGURAÇÃO DO FIREBASE
+   Cole aqui os dados do SEU projeto (Console do Firebase >
+   Configurações do projeto > Seus apps > Configuração do SDK).
+   Enquanto tiver "COLE_AQUI", o site roda em modo demonstração.
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCzwV7kENSJwZHnUt294bBdGKVaOlAzWnw",
+  authDomain: "ilha-do-kara.firebaseapp.com",
+  projectId: "ilha-do-kara",
+  storageBucket: "ilha-do-kara.firebasestorage.app",
+  messagingSenderId: "864825290085",
+  appId: "1:864825290085:web:5479fa1f66c03ff7dc858c"
+};
+const CONFIGURADO = !String(firebaseConfig.apiKey).includes("COLE_AQUI");
+
+/* ---------- Estado ---------- */
+let config = {
+  nomeEvento: "Encontro da Nossa Família",
+  subtitulo: "Vaquinha mensal • meta do reencontro",
+  eyebrow: "Caixa do encontro",
+  valorMensal: 50,
+  meta: 0,
+  meses: []
+};
+let contribuintes = []; // { id, nome, pagamentos:{ "2026-02":true }, ordem }
+let editando = false;
+let filtroLate = false;
+let busca = "";
+let db = null, auth = null, fb = null;
+
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+const money = n => "R$ " + Math.round(n).toLocaleString("pt-BR");
+const MESES_PT = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+function rotuloMes(key){ const [a,m]=key.split("-"); return MESES_PT[(+m)-1] + "/" + a.slice(2); }
+function mesAtualKey(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+function mesesDevidos(){ const atual = mesAtualKey(); return config.meses.filter(m => m <= atual); }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2200); }
+
+/* ---------- Métricas ---------- */
+function metricas(){
+  const devidos = mesesDevidos();
+  let totalPago = 0, entrouMes = 0, emDia = 0, atrasados = 0;
+  const atual = mesAtualKey();
+  const porMes = {}; config.meses.forEach(m => porMes[m]=0);
+  contribuintes.forEach(p => {
+    let faltando = 0;
+    config.meses.forEach(m => {
+      if(p.pagamentos && p.pagamentos[m]){
+        totalPago += config.valorMensal;
+        porMes[m] += config.valorMensal;
+        if(m === atual) entrouMes += config.valorMensal;
+      }
+    });
+    devidos.forEach(m => { if(!(p.pagamentos && p.pagamentos[m])) faltando++; });
+    if(faltando === 0 && devidos.length>0) emDia++; else if(faltando>0) atrasados++;
+  });
+  const meta = config.meta > 0 ? config.meta : (config.valorMensal * contribuintes.length * config.meses.length);
+  const pct = meta>0 ? Math.min(100, (totalPago/meta)*100) : 0;
+  return { totalPago, entrouMes, emDia, atrasados, meta, pct, porMes, devidos };
+}
+
+/* ---------- Render ---------- */
+function render(){
+  const m = metricas();
+  $("eyebrow").textContent = config.eyebrow || "Caixa do encontro";
+  $("eventName").textContent = config.nomeEvento;
+  $("eventSubtitle").textContent = config.subtitulo || "";
+
+  $("heroAmount").textContent = money(m.totalPago);
+  $("heroGoal").textContent = money(m.meta);
+  $("heroPct").textContent = Math.round(m.pct) + "%";
+  const falta = Math.max(0, m.meta - m.totalPago);
+  $("heroRemaining").textContent = falta>0 ? "Faltam " + money(falta) : "Meta batida!";
+  requestAnimationFrame(()=>{ $("heroFill").style.width = m.pct + "%"; });
+
+  $("statOk").textContent = m.emDia;
+  $("statLate").textContent = m.atrasados;
+  $("statMonth").textContent = money(m.entrouMes);
+  $("statMonthLabel").textContent = "Entrou em " + (config.meses.includes(mesAtualKey()) ? rotuloMes(mesAtualKey()) : "meses passados");
+
+  renderChart(m);
+  renderPeople(m);
+  $("btnAddPerson").style.display = editando ? "inline-flex" : "none";
+}
+
+function renderChart(m){
+  const meses = config.meses;
+  const svg = $("chart");
+  if(!meses.length){ svg.innerHTML=""; return; }
+  const W = Math.max(320, meses.length*46), H=180, pad=26, bottom=24;
+  const esperado = config.valorMensal * contribuintes.length;
+  const maxV = Math.max(esperado, ...meses.map(k=>m.porMes[k]), 1);
+  const bw = (W - pad*2) / meses.length * .6;
+  const gap = (W - pad*2) / meses.length;
+  const y = v => (H - bottom) - (v/maxV)*(H - bottom - 24);
+  const fmtBar = v => v>=1000 ? (v/1000).toFixed(1).replace(".0","")+"k" : v;
+  let bars="", labels="", vals="";
+  meses.forEach((k,i)=>{
+    const cx = pad + gap*i + gap/2;
+    const val = m.porMes[k];
+    const yy = y(val), h=(H-bottom)-yy;
+    bars += `<rect class="bar" x="${cx-bw/2}" y="${yy}" width="${bw}" height="${h}" rx="5" fill="var(--amber)"/>`;
+    labels += `<text x="${cx}" y="${H-7}" text-anchor="middle" font-size="10.5" fill="var(--ink-faint)" font-family="Instrument Sans">${rotuloMes(k)}</text>`;
+    if(val>0) vals += `<text x="${cx}" y="${yy-6}" text-anchor="middle" font-size="10.5" fill="var(--amber-deep)" font-weight="700" font-family="Instrument Sans">${fmtBar(val)}</text>`;
+  });
+  const ey = y(esperado);
+  const expLine = esperado>0 ? `<line x1="${pad}" y1="${ey}" x2="${W-pad}" y2="${ey}" stroke="var(--ink-faint)" stroke-width="1.4" stroke-dasharray="5 4"/>` : "";
+  svg.setAttribute("viewBox",`0 0 ${W} ${H}`);
+  svg.setAttribute("width", W); svg.setAttribute("height", H);
+  svg.innerHTML = expLine + bars + vals + labels;
+}
+
+function renderPeople(m){
+  const cont = $("people");
+  const devidos = new Set(m.devidos);
+  let lista = contribuintes.slice().sort((a,b)=> (a.nome||"").localeCompare(b.nome||"","pt"));
+  if(busca) lista = lista.filter(p => (p.nome||"").toLowerCase().includes(busca.toLowerCase()));
+  if(filtroLate) lista = lista.filter(p => m.devidos.some(mk => !(p.pagamentos && p.pagamentos[mk])));
+  $("peopleCount").textContent = contribuintes.length + (contribuintes.length===1?" pessoa":" pessoas");
+
+  if(!lista.length){ cont.innerHTML = `<div class="empty">${contribuintes.length? "Ninguém encontrado com esse filtro." : "Ainda não há contribuintes. Entre como tesoureira pra adicionar."}</div>`; return; }
+
+  cont.innerHTML = lista.map(p=>{
+    let pagos=0; config.meses.forEach(mk=>{ if(p.pagamentos && p.pagamentos[mk]) pagos++; });
+    const falta = m.devidos.filter(mk=>!(p.pagamentos && p.pagamentos[mk])).length;
+    const total = pagos*config.valorMensal;
+    const badge = (falta===0 && m.devidos.length>0)
+      ? `<span class="badge ok">em dia</span>`
+      : (falta>0 ? `<span class="badge late">falta ${falta}</span>` : `<span class="badge ok">—</span>`);
+    const dots = config.meses.map(mk=>{
+      const paid = p.pagamentos && p.pagamentos[mk];
+      const due = devidos.has(mk);
+      return `<div class="dot ${paid?'paid':''} ${due?'due':''}" data-id="${p.id}" data-month="${mk}" role="button" aria-label="${rotuloMes(mk)}: ${paid?'pago':'não pago'}" title="${rotuloMes(mk)}: ${paid?'pago':'não pago'}">${MESES_PT[(+mk.split("-")[1])-1]}</div>`;
+    }).join("");
+    return `<div class="person">
+      <div class="person-top">
+        <span class="p-name">${escapeHtml(p.nome)}</span>
+        <span class="p-right"><span class="p-total num">${money(total)}</span>${badge}</span>
+      </div>
+      <div class="dots">${dots}</div>
+      <button class="p-remove" data-remove="${p.id}">remover</button>
+    </div>`;
+  }).join("");
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+/* ---------- Interações ---------- */
+$("searchInput").addEventListener("input", e=>{ busca=e.target.value; render(); });
+$("toggleLate").addEventListener("click", e=>{ filtroLate=!filtroLate; e.target.classList.toggle("on",filtroLate); render(); });
+
+$("people").addEventListener("click", async e=>{
+  if(!editando) return;
+  const dot = e.target.closest(".dot");
+  if(dot){ await togglePagamento(dot.dataset.id, dot.dataset.month); return; }
+  const rm = e.target.closest("[data-remove]");
+  if(rm){ if(confirm("Remover essa pessoa da lista?")) await removerPessoa(rm.dataset.remove); }
+});
+
+$("btnShare").addEventListener("click", ()=>{
+  const m = metricas();
+  const falta = Math.max(0, m.meta - m.totalPago);
+  const linha = falta>0 ? `Faltam ${money(falta)} pra meta.` : `Meta batida! 🎉`;
+  const url = location.href.split("#")[0];
+  const txt =
+`📊 *${config.nomeEvento}* — atualização
+💰 Já juntamos: *${money(m.totalPago)}* de ${money(m.meta)} (${Math.round(m.pct)}%)
+✅ Em dia: ${m.emDia} • ⏳ Faltando pagar: ${m.atrasados}
+${linha}
+📅 Atualizado em ${new Date().toLocaleDateString("pt-BR")}
+👉 Veja quem já pagou: ${url}`;
+  navigator.clipboard.writeText(txt).then(
+    ()=>toast("Resumo copiado! Cole no grupo."),
+    ()=>{ prompt("Copie o texto abaixo:", txt); }
+  );
+});
+
+/* ---------- Tesoureira / login ---------- */
+$("btnTreasurer").addEventListener("click", ()=>{
+  if(CONFIGURADO){ $("loginOverlay").classList.add("show"); $("loginEmail").focus(); }
+  else { entrarModoEdicao("(demonstração)"); toast("Modo edição demo. Nada é salvo."); }
+});
+$("loginCancel").addEventListener("click", ()=> $("loginOverlay").classList.remove("show"));
+$("loginOverlay").addEventListener("click", e=>{ if(e.target===$("loginOverlay")) $("loginOverlay").classList.remove("show"); });
+$("loginSubmit").addEventListener("click", fazerLogin);
+$("loginPass").addEventListener("keydown", e=>{ if(e.key==="Enter") fazerLogin(); });
+
+async function fazerLogin(){
+  $("loginErr").textContent="";
+  const email=$("loginEmail").value.trim(), pass=$("loginPass").value;
+  if(!email||!pass){ $("loginErr").textContent="Preencha e-mail e senha."; return; }
+  try{
+    await fb.signInWithEmailAndPassword(auth, email, pass);
+    $("loginOverlay").classList.remove("show");
+    $("loginPass").value="";
+  }catch(err){
+    $("loginErr").textContent = "E-mail ou senha incorretos.";
+  }
+}
+$("btnLogout").addEventListener("click", async ()=>{
+  if(CONFIGURADO && auth){ await fb.signOut(auth); }
+  else sairModoEdicao();
+});
+
+function entrarModoEdicao(quem){
+  editando=true;
+  document.body.classList.add("editing");
+  $("adminbar").classList.add("show");
+  $("adminWho").textContent = quem||"";
+  render();
+}
+function sairModoEdicao(){
+  editando=false;
+  document.body.classList.remove("editing");
+  $("adminbar").classList.remove("show");
+  render();
+}
+
+/* ---------- Config modal ---------- */
+$("btnConfig").addEventListener("click", abrirConfig);
+$("cfgCancel").addEventListener("click", ()=> $("configOverlay").classList.remove("show"));
+$("cfgAddMonth").addEventListener("click", ()=>{
+  const v=$("cfgNewMonth").value; if(!v) return;
+  if(!tempMonths.includes(v)){ tempMonths.push(v); tempMonths.sort(); renderMonthChips(); }
+  $("cfgNewMonth").value="";
+});
+$("cfgSave").addEventListener("click", salvarConfig);
+let tempMonths=[];
+function abrirConfig(){
+  $("cfgName").value=config.nomeEvento;
+  $("cfgSubtitle").value=config.subtitulo;
+  $("cfgValue").value=config.valorMensal;
+  $("cfgGoal").value=config.meta||"";
+  tempMonths=config.meses.slice();
+  renderMonthChips();
+  $("configOverlay").classList.add("show");
+}
+function renderMonthChips(){
+  $("monthsEditor").innerHTML = tempMonths.length
+    ? tempMonths.map(mk=>`<span class="month-chip">${rotuloMes(mk)}<button data-m="${mk}">×</button></span>`).join("")
+    : `<span class="hint">Nenhum mês ainda.</span>`;
+  $("monthsEditor").querySelectorAll("button").forEach(b=> b.onclick=()=>{ tempMonths=tempMonths.filter(x=>x!==b.dataset.m); renderMonthChips(); });
+}
+async function salvarConfig(){
+  const novo = {
+    nomeEvento: $("cfgName").value.trim() || "Encontro da Nossa Família",
+    subtitulo: $("cfgSubtitle").value.trim(),
+    eyebrow: config.eyebrow,
+    valorMensal: Math.max(0, +$("cfgValue").value || 0),
+    meta: Math.max(0, +$("cfgGoal").value || 0),
+    meses: tempMonths.slice().sort()
+  };
+  config = novo;
+  $("configOverlay").classList.remove("show");
+  if(CONFIGURADO) await fb.setDoc(fb.doc(db,"config","geral"), config);
+  render();
+  toast("Ajustes salvos.");
+}
+
+/* ---------- Adicionar / remover / marcar ---------- */
+$("btnAddPerson").addEventListener("click", async ()=>{
+  const nome = prompt("Nome da pessoa ou família:");
+  if(!nome || !nome.trim()) return;
+  await adicionarPessoa(nome.trim());
+});
+
+async function adicionarPessoa(nome){
+  if(CONFIGURADO){
+    await fb.addDoc(fb.collection(db,"contribuintes"), { nome, pagamentos:{}, ordem: Date.now() });
+  } else {
+    contribuintes.push({ id:"demo-"+Date.now(), nome, pagamentos:{}, ordem:Date.now() });
+    render();
+  }
+  toast(nome + " adicionada.");
+}
+async function removerPessoa(id){
+  if(CONFIGURADO){ await fb.deleteDoc(fb.doc(db,"contribuintes",id)); }
+  else { contribuintes = contribuintes.filter(p=>p.id!==id); render(); }
+}
+async function togglePagamento(id, mes){
+  const p = contribuintes.find(x=>x.id===id); if(!p) return;
+  const novo = !(p.pagamentos && p.pagamentos[mes]);
+  if(CONFIGURADO){
+    await fb.updateDoc(fb.doc(db,"contribuintes",id), { ["pagamentos."+mes]: novo });
+  } else {
+    p.pagamentos = p.pagamentos||{}; p.pagamentos[mes]=novo; render();
+  }
+}
+
+/* ============================================================
+   2) INICIALIZAÇÃO
+   ============================================================ */
+async function iniciar(){
+  if(CONFIGURADO){
+    const appMod = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js");
+    const fsMod  = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const auMod  = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js");
+    const app = appMod.initializeApp(firebaseConfig);
+    db = fsMod.getFirestore(app);
+    auth = auMod.getAuth(app);
+    fb = {
+      doc:fsMod.doc, setDoc:fsMod.setDoc, updateDoc:fsMod.updateDoc, collection:fsMod.collection,
+      addDoc:fsMod.addDoc, deleteDoc:fsMod.deleteDoc, onSnapshot:fsMod.onSnapshot,
+      signInWithEmailAndPassword:auMod.signInWithEmailAndPassword, signOut:auMod.signOut
+    };
+    // Ouve config
+    fb.onSnapshot(fb.doc(db,"config","geral"), snap=>{
+      if(snap.exists()) config = Object.assign(config, snap.data());
+      render();
+    });
+    // Ouve contribuintes (tempo real)
+    fb.onSnapshot(fb.collection(db,"contribuintes"), snap=>{
+      contribuintes = snap.docs.map(d=> Object.assign({id:d.id}, d.data()));
+      $("updatedAt").textContent = "Atualizado " + new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+      render();
+    });
+    // Estado de login
+    auMod.onAuthStateChanged(auth, user=>{
+      if(user) entrarModoEdicao(user.email ? "• "+user.email.split("@")[0] : "");
+      else sairModoEdicao();
+    });
+  } else {
+    $("demoFlag").style.display="flex";
+    carregarDemo();
+    render();
+  }
+}
+
+/* ---------- Dados de demonstração ---------- */
+function carregarDemo(){
+  config = {
+    nomeEvento:"Encontro da Família Oliveira",
+    subtitulo:"Vaquinha mensal • reencontro de dezembro",
+    eyebrow:"Caixa do encontro",
+    valorMensal:50,
+    meta:6000,
+    meses:["2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10","2026-11","2026-12"]
+  };
+  const nomes=["Tia Marli","Tio Zé","Prima Ana","Vovó Cida","Família do João","Família da Rita","Primo Léo","Tia Sônia","Padrinho Cláudio","Família Souza","Prima Beta","Tio Nando","Família Alves","Sobrinha Duda"];
+  const atual = mesAtualKey();
+  contribuintes = nomes.map((n,i)=>{
+    const pag={};
+    config.meses.forEach(mk=>{ if(mk<=atual){ const paga = Math.random() > (i%4===0?0.55:0.18); if(paga) pag[mk]=true; } });
+    return { id:"demo-"+i, nome:n, pagamentos:pag, ordem:i };
+  });
+}
+
+iniciar();
+</script>
+</body>
+</html>
